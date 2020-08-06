@@ -1,0 +1,138 @@
+LIBRARY IEEE;
+USE IEEE.STD_LOGIC_1164.ALL;
+LIBRARY UNISIM;
+USE UNISIM.VCOMPONENTS.ALL;
+-------------------------------------------------------------------------
+ENTITY KBRD_PS2 IS
+	PORT	(	CLK50M			:	IN  STD_LOGIC;
+				KBRD_DATA_PIN 	:	IN STD_LOGIC;
+				KBRD_CLK_PIN	:	IN STD_LOGIC;
+				RESET				:	IN BOOLEAN;
+				KBRD_DATA		:	BUFFER  STD_LOGIC_VECTOR (7 DOWNTO 0);
+				ENABLE_KB		:	OUT BOOLEAN;
+				KEY_DOWN			:	BUFFER BOOLEAN;
+				KEY_UP			:	BUFFER BOOLEAN;
+				
+				--COUNTER_OUT		:	OUT NATURAL RANGE 0 TO 9;
+				
+				E0					:	BUFFER BOOLEAN
+				
+			);
+END KBRD_PS2;
+-------------------------------------------------------------------------
+ARCHITECTURE BEHAVIORAL OF KBRD_PS2 IS
+SIGNAL	CLK_P			:	STD_LOGIC := '0';
+SIGNAL	PAR_OK		:	STD_LOGIC := '0';
+SIGNAL	KBRD_DATA_S	:	STD_LOGIC_VECTOR (7 DOWNTO 0) := "00000000";
+SIGNAL	WT_KB			:	BOOLEAN	:=FALSE;
+SIGNAL	COUNTER_KB	:	NATURAL RANGE 0 TO 9;
+
+SIGNAL	CLKOUT	:	STD_LOGIC := '0';
+
+
+BEGIN
+	ENABLE_KB	<=	WT_KB AND ( COUNTER_KB = 0 ) AND (NOT RESET);
+	
+	--COUNTER_OUT	<=	COUNTER_KB;
+	
+-------------------------VALIDACION DE DATOS DEL TECLADO PS2-----------------------
+	PROCESS ( CLK50M,RESET ) IS
+	BEGIN
+		IF RESET THEN
+			WT_KB	<=	FALSE;
+			E0	<=	FALSE;
+			KEY_DOWN <= FALSE;
+			KEY_UP	<=	FALSE;
+			CLK_P <= '1';
+		ELSIF ( CLK50M = '1' AND CLK50M'EVENT )THEN
+			IF ( KBRD_CLK_PIN = '1' )THEN
+				CLK_P <= '1';
+			ELSE
+				CLK_P <= '0';
+			END IF;
+			
+			
+			
+			
+			IF ( COUNTER_KB = 9 ) THEN
+				IF RESET THEN
+					WT_KB	<=	FALSE;
+				ELSE
+					IF ( KBRD_DATA_S = "11110000" OR KBRD_DATA_S = "11100000" ) THEN
+						IF ( KBRD_DATA_S = "11110000" ) THEN
+							KEY_UP	<=	TRUE;
+							KEY_DOWN <= FALSE;
+						END IF;
+						
+						IF ( KBRD_DATA_S = "11100000" ) THEN
+							E0	<=	TRUE;
+						ELSE
+							E0	<=	FALSE;
+						END IF;
+						
+					ELSIF ( ( NOT WT_KB ) AND ( NOT KEY_DOWN ) AND ( NOT KEY_UP ) ) THEN
+						KEY_DOWN	<=	TRUE;
+						WT_KB	<=	TRUE;
+						KBRD_DATA	<=	KBRD_DATA_S;
+					ELSIF ( ( NOT WT_KB ) AND KEY_UP ) THEN
+						WT_KB	<=	TRUE;
+						KBRD_DATA	<=	KBRD_DATA_S;
+					END IF;
+				END IF;
+			ELSIF ( COUNTER_KB = 0 ) THEN
+				IF ( WT_KB ) THEN
+					
+					IF ( KEY_DOWN ) THEN
+						KEY_DOWN <= FALSE;
+					ELSIF ( KEY_UP ) THEN
+						KEY_UP	<=	FALSE;
+					END IF;
+					WT_KB	<=	FALSE;
+				END IF;
+			END IF;
+		END IF;
+	END PROCESS;
+-------------------------RECEPCIÓN DE DATOS DEL TECLADO PS2-----------------------
+	PROCESS (CLKOUT , RESET) IS
+	BEGIN
+		IF RESET THEN
+			COUNTER_KB	<=	0;
+			PAR_OK		<=	'0';
+		ELSIF (CLKOUT = '0' AND CLKOUT'EVENT)THEN
+			IF ( KEY_DOWN AND COUNTER_KB<9  ) THEN
+				COUNTER_KB	<=	0;
+			END IF;
+			CASE ( COUNTER_KB ) IS
+				WHEN	0	=>	PAR_OK <= '0';
+				WHEN	1	=>	KBRD_DATA_S(0) <= KBRD_DATA_PIN;
+				WHEN	2	=>	KBRD_DATA_S(1) <= KBRD_DATA_PIN;
+				WHEN	3	=> KBRD_DATA_S(2) <= KBRD_DATA_PIN;
+				WHEN	4	=> KBRD_DATA_S(3) <= KBRD_DATA_PIN;
+				WHEN	5	=> KBRD_DATA_S(4) <= KBRD_DATA_PIN;
+				WHEN	6	=> KBRD_DATA_S(5) <= KBRD_DATA_PIN;
+				WHEN	7	=> KBRD_DATA_S(6) <= KBRD_DATA_PIN;
+				WHEN	8	=> KBRD_DATA_S(7) <= KBRD_DATA_PIN;
+				WHEN	9	=> PAR_OK <= '1';
+				WHEN OTHERS =>	NULL;
+			END CASE;
+			COUNTER_KB	<=	COUNTER_KB + 1;
+			IF ( COUNTER_KB >=9 ) THEN
+				COUNTER_KB	<=	0;
+			END IF;
+			IF ( PAR_OK = '1' )THEN
+				PAR_OK		<=	'0';
+				COUNTER_KB	<=	0;
+			END IF;
+		END IF;		
+	END PROCESS;
+-------------------------RECEPCIÓN DE DATOS DEL TECLADO PS2-----------------------
+	
+	
+	
+   BUFG_INST1 : BUFG
+   PORT MAP (
+      O => CLKOUT,   -- CLOCK BUFFER OUTPUT
+      I => CLK_P -- CLOCK BUFFER INPUT
+   );
+
+END BEHAVIORAL;

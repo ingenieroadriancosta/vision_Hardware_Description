@@ -1,0 +1,20 @@
+Release 12.1 - netgen M.53d (nt)
+Copyright (c) 1995-2010 Xilinx, Inc.  All rights reserved.
+
+Command Line: netgen -intstyle ise -rpw 100 -tpw 0 -ar Structure -tm VGA16BITS
+-w -dir netgen/translate -ofmt vhdl -sim VGA16BITS.ngd VGA16BITS_translate.vhd  
+
+Reading design 'VGA16BITS.ngd' ...
+Flattening design ...
+Processing design ... 
+  Preping design's networks ...
+  Preping design's macros ...
+Writing VHDL netlist
+'E:\VHDL\PROGRAMAS\APRENDIZAJE\__MY__NEXIS2\VGA\VGA16BITS\VHDL\netgen\translate\
+VGA16BITS_translate.vhd' ...
+INFO:NetListWriters:635 - The generated VHDL netlist contains Xilinx SIMPRIM
+   simulation primitives and has to be used with SIMPRIM library for correct
+   compilation and simulation. 
+Number of warnings: 0
+Number of info messages: 1
+Total memory usage is 99580 kilobytes

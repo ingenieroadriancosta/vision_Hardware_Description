@@ -1,0 +1,568 @@
+----------------------------------------------------------------------------------------------------------------
+--LIBRARY IEEE;
+--USE IEEE.STD_LOGIC_1164.ALL;
+--USE IEEE.STD_LOGIC_ARITH.ALL;
+--USE IEEE.STD_LOGIC_UNSIGNED.ALL;
+--USE WORK.PAQUETE.ALL;
+-------------------------------------------------------------------------------
+--ENTITY USBRECEIVER IS
+--	PORT(	MCLK			:	IN STD_LOGIC;
+--			ABORT			:	IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+--			PDB			:	INOUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+--			ASTB			:	IN STD_LOGIC;
+--			DSTB			:	IN STD_LOGIC;
+--			PWRITE		:	IN STD_LOGIC;
+--			PWAIT			:	OUT STD_LOGIC;
+--			
+--			WORDDATA		:	OUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+--			PUTDATA		:	OUT BOOLEAN;
+--			ABORTED		:	OUT BOOLEAN
+--			);
+--END USBRECEIVER;
+--
+--ARCHITECTURE BEHAVIORAL OF USBRECEIVER IS
+--------------------------------------------------------------------------
+----  CONSTANT DECLARATIONS
+--------------------------------------------------------------------------
+--	-- THE FOLLOWING CONSTANTS DEFINE STATE CODES FOR THE EPP PORT INTERFACE
+--	-- STATE MACHINE. THE HIGH ORDER BITS OF THE STATE NUMBER GIVE A UNIQUE
+--	-- STATE IDENTIFIER. THE LOW ORDER BITS ARE THE STATE MACHINE OUTPUTS FOR
+--	-- THAT STATE. THIS TYPE OF STATE MACHINE IMPLEMENTATION USES NO
+--	-- COMBINATION LOGIC TO GENERATE OUTPUTS WHICH SHOULD PRODUCE GLITCH
+--	-- FREE OUTPUTS.
+--	CONSTANT	STEPPREADY	: STD_LOGIC_VECTOR(7 DOWNTO 0) := "0000" & "0000";
+--	CONSTANT	STEPPAWRA	: STD_LOGIC_VECTOR(7 DOWNTO 0) := "0001" & "0100";
+--	CONSTANT	STEPPAWRB	: STD_LOGIC_VECTOR(7 DOWNTO 0) := "0010" & "0001";
+--	CONSTANT	STEPPARDA	: STD_LOGIC_VECTOR(7 DOWNTO 0) := "0011" & "0010";
+--	CONSTANT	STEPPARDB	: STD_LOGIC_VECTOR(7 DOWNTO 0) := "0100" & "0011";
+--	CONSTANT	STEPPDWRA	: STD_LOGIC_VECTOR(7 DOWNTO 0) := "0101" & "1000";
+--	CONSTANT	STEPPDWRB	: STD_LOGIC_VECTOR(7 DOWNTO 0) := "0110" & "0001";
+--	CONSTANT	STEPPDRDA	: STD_LOGIC_VECTOR(7 DOWNTO 0) := "0111" & "0010";
+--	CONSTANT	STEPPDRDB	: STD_LOGIC_VECTOR(7 DOWNTO 0) := "1000" & "0011";
+--
+--------------------------------------------------------------------------
+---- SIGNAL DECLARATIONS
+--------------------------------------------------------------------------
+--
+--	-- STATE MACHINE CURRENT STATE REGISTER
+--	SIGNAL	STEPPCUR	: STD_LOGIC_VECTOR(7 DOWNTO 0) := STEPPREADY;
+--
+--	SIGNAL	STEPPNEXT	: STD_LOGIC_VECTOR(7 DOWNTO 0);
+--	
+--	
+----	ATTRIBUTE FSM_EXTRACT : STRING;
+----	ATTRIBUTE FSM_EXTRACT OF STEPPCUR: SIGNAL IS "NO"; 
+----	ATTRIBUTE FSM_EXTRACT OF STEPPNEXT: SIGNAL IS "NO"; 
+----
+----	ATTRIBUTE FSM_ENCODING : STRING;
+----	ATTRIBUTE FSM_ENCODING OF STEPPCUR: SIGNAL IS "USER"; 
+----	ATTRIBUTE FSM_ENCODING OF STEPPNEXT: SIGNAL IS "USER"; 
+----
+----	ATTRIBUTE SIGNAL_ENCODING : STRING;
+----	ATTRIBUTE SIGNAL_ENCODING OF STEPPCUR: SIGNAL IS "USER"; 
+----	ATTRIBUTE SIGNAL_ENCODING OF STEPPNEXT: SIGNAL IS "USER"; 
+--	
+--	
+--	
+--	SIGNAL	CLKMAIN		: STD_LOGIC;
+--	-- INTERNAL CONTROL SIGNALES
+----	SIGNAL	CTLEPPWAIT	: STD_LOGIC;
+--	SIGNAL	CTLEPPASTB	: STD_LOGIC;
+--	SIGNAL	CTLEPPDSTB	: STD_LOGIC;
+--	SIGNAL	CTLEPPDIR	: STD_LOGIC;
+--	SIGNAL	CTLEPPWR	: STD_LOGIC;
+--	SIGNAL	CTLEPPAWR	: STD_LOGIC;
+--	SIGNAL	CTLEPPDWR	: STD_LOGIC;
+--	SIGNAL	BUSEPPIN	: STD_LOGIC_VECTOR(7 DOWNTO 0);
+--
+--	-- DATA INFO.
+--	SIGNAL	LOBYTE	: STD_LOGIC_VECTOR(7 DOWNTO 0);
+--	SIGNAL	HIBYTE	: STD_LOGIC_VECTOR(7 DOWNTO 0);
+--	SIGNAL	DATAOK	: BOOLEAN:=FALSE;
+--	
+--	
+--	
+--	
+--	SIGNAL	ABORTEDSN: BOOLEAN:=FALSE;
+--	
+--	
+--	SIGNAL	ADDR		:	STD_LOGIC_VECTOR(7 DOWNTO 0):=x"FF";
+--	SIGNAL	CNTWORD	:	NATURAL RANGE 0 TO 1:=0;
+--------------------------------------------------------------------------
+---- MODULE IMPLEMENTATION
+--------------------------------------------------------------------------
+--
+--BEGIN
+--	WORDDATA(15 DOWNTO 8)	<=	HIBYTE;
+--	WORDDATA( 7 DOWNTO 0)	<=	LOBYTE;
+--	PUTDATA	<=	DATAOK;
+--	ABORTED	<=	ABORTEDSN;
+--    ------------------------------------------------------------------------
+--	-- MAP BASIC STATUS AND CONTROL SIGNALS
+--    ------------------------------------------------------------------------
+--	CLKMAIN <= MCLK;
+--	CTLEPPASTB <= ASTB;
+--	CTLEPPDSTB <= DSTB;
+--	CTLEPPWR   <= PWRITE;
+--	--PWAIT      <= CTLEPPWAIT;	-- DRIVE WAIT FROM STATE MACHINE OUTPUT
+--	-- DATA BUS DIRECTION CONTROL. THE INTERNAL INPUT DATA BUS ALWAYS
+--	-- GETS THE PORT DATA BUS. THE PORT DATA BUS DRIVES THE INTERNAL
+--	-- OUTPUT DATA BUS ONTO THE PINS WHEN THE INTERFACE SAYS WE ARE DOING
+--	-- A READ CYCLE AND WE ARE IN ONE OF THE READ CYCLES STATES IN THE
+--	-- STATE MACHINE.
+--	PDB	<=	"000"&ABORT(4 DOWNTO 0)	WHEN CTLEPPWR = '1' AND CTLEPPDIR = '1' ELSE "ZZZZZZZZ";
+--	BUSEPPIN <= PDB;
+--------------------------------------------------------------------------------------------
+--	PROCESS (CLKMAIN)
+--		BEGIN
+--			IF CLKMAIN = '1' AND CLKMAIN'EVENT THEN
+--				
+--				IF DATAOK THEN
+--					DATAOK	<=	FALSE;
+--				END IF;
+--				
+--				IF ABORTEDSN THEN
+--					ABORTEDSN<= FALSE;
+--				END IF;
+--				
+--				IF CTLEPPAWR = '1' THEN
+--					ADDR	<=	BUSEPPIN;
+--				END IF;
+--				
+--				IF CTLEPPDWR = '1' THEN
+--					IF	ADDR=x"00" THEN
+--						IF CNTWORD=0 THEN
+--							CNTWORD	<=	CNTWORD+1;
+--							HIBYTE	<=	BUSEPPIN;
+--						ELSE
+--							CNTWORD	<=	0;
+--							LOBYTE	<=	BUSEPPIN;
+--							DATAOK	<=	TRUE;
+--						END IF;
+--					ELSIF	ADDR=x"01" THEN
+--							CNTWORD	<=	0;
+--					ELSIF	ADDR=x"02" THEN
+--							CNTWORD	<=	0;
+--							DATAOK	<=	FALSE;
+--							ABORTEDSN<= TRUE;
+--					END IF;
+--				END IF;
+--				
+--				
+--
+--				
+--				
+--			END IF;
+--		END PROCESS;
+--------------------------------------------------------------------------------------------
+--
+--
+--	
+--	
+--	------------------|
+--	--			USB PROC.|
+--	------------------V
+--	
+--
+--	-- MAP CONTROL SIGNALS FROM THE CURRENT STATE
+--	--PWAIT <= '1' WHEN ASTB = '0' OR DSTB = '0' ELSE (ABORT(7) AND ABORT(6) AND ABORT(5));
+--	PWAIT <= STEPPCUR(0) OR (ABORT(7) AND ABORT(6) AND ABORT(5));
+--	CTLEPPDIR  <= STEPPCUR(1);
+--	CTLEPPAWR  <= STEPPCUR(2);
+--	CTLEPPDWR  <= STEPPCUR(3);-----
+--	-- THIS PROCESS MOVES THE STATE MACHINE TO THE NEXT STATE
+--	-- ON EACH CLOCK CYCLE
+--	PROCESS (CLKMAIN)
+--		BEGIN
+--			IF CLKMAIN = '1' AND CLKMAIN'EVENT THEN
+--				STEPPCUR <= STEPPNEXT;
+--			END IF;
+--		END PROCESS;
+--	-- THIS PROCESS DETERMINES THE NEXT STATE MACHINE STATE BASED
+--	-- ON THE CURRENT STATE AND THE STATE MACHINE INPUTS.
+--	PROCESS (STEPPCUR, STEPPNEXT, CTLEPPASTB, CTLEPPDSTB, CTLEPPWR)
+--		BEGIN
+--			CASE STEPPCUR IS
+--				-- IDLE STATE WAITING FOR THE BEGINNING OF AN EPP CYCLE
+--				WHEN STEPPREADY =>
+--					IF CTLEPPASTB = '0' THEN
+--						-- ADDRESS READ OR WRITE CYCLE
+--						IF CTLEPPWR = '0' THEN
+--							STEPPNEXT <= STEPPAWRA;
+--						ELSE
+--							STEPPNEXT <= STEPPARDA;
+--						END IF;
+--
+--					ELSIF CTLEPPDSTB = '0' THEN
+--						-- DATA READ OR WRITE CYCLE
+--						IF CTLEPPWR = '0' THEN
+--							STEPPNEXT <= STEPPDWRA;
+--						ELSE
+--							STEPPNEXT <= STEPPDRDA;
+--						END IF;
+--
+--					ELSE
+--						-- REMAIN IN READY STATE
+--						STEPPNEXT <= STEPPREADY;
+--					END IF;											
+--
+--				-- WRITE ADDRESS REGISTER
+--				WHEN STEPPAWRA =>
+--					STEPPNEXT <= STEPPAWRB;
+--
+--				WHEN STEPPAWRB =>
+--					IF CTLEPPASTB = '0' THEN
+--						STEPPNEXT <= STEPPAWRB;
+--					ELSE
+--						STEPPNEXT <= STEPPREADY;
+--					END IF;		
+--
+--				-- READ ADDRESS REGISTER
+--				WHEN STEPPARDA =>
+--					STEPPNEXT <= STEPPARDB;
+--
+--				WHEN STEPPARDB =>
+--					IF CTLEPPASTB = '0' THEN
+--						STEPPNEXT <= STEPPARDB;
+--					ELSE
+--						STEPPNEXT <= STEPPREADY;
+--					END IF;
+--
+--				-- WRITE DATA REGISTER
+--				WHEN STEPPDWRA =>
+--					STEPPNEXT <= STEPPDWRB;
+--
+--				WHEN STEPPDWRB =>
+--					IF CTLEPPDSTB = '0' THEN
+--						STEPPNEXT <= STEPPDWRB;
+--					ELSE
+-- 						STEPPNEXT <= STEPPREADY;
+--					END IF;
+--
+--				-- READ DATA REGISTER
+--				WHEN STEPPDRDA =>
+--					STEPPNEXT <= STEPPDRDB;
+--										
+--				WHEN STEPPDRDB =>
+--					IF CTLEPPDSTB = '0' THEN
+--						STEPPNEXT <= STEPPDRDB;
+--					ELSE
+--				  		STEPPNEXT <= STEPPREADY;
+--					END IF;
+--
+--				-- SOME UNKNOWN STATE				
+--				WHEN OTHERS =>
+--					STEPPNEXT <= STEPPREADY;
+--			END CASE;
+--		END PROCESS;
+--END BEHAVIORAL;
+-------------------------------------------------------------------------------------------------------
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+--
+----LIBRARY UNISIM;
+----USE UNISIM.VCOMPONENTS.ALL;
+----LIBRARY IEEE;
+----USE IEEE.STD_LOGIC_1164.ALL;
+----USE IEEE.STD_LOGIC_UNSIGNED.ALL;
+----USE IEEE.STD_LOGIC_ARITH.ALL;
+----USE IEEE.NUMERIC_STD.ALL ;
+----USE WORK.PAQUETE.ALL;
+----------------------------------------------------------------------------
+----ENTITY VGADRVR IS
+----	PORT( CLK50M		:	IN STD_LOGIC;
+----			--
+----			VGA_8_16		:	IN BOOLEAN;
+----			COLOR_RED	:	IN STD_LOGIC_VECTOR (5  DOWNTO 0);
+----			COLOR_GREEN	:	IN STD_LOGIC_VECTOR (5  DOWNTO 0);
+----			COLOR_BLUE	:	IN STD_LOGIC_VECTOR (3  DOWNTO 0);
+----			--
+----			CNT_RAM_POS	:	OUT NATURAL RANGE 0   TO 327679;
+----			POS_X			:	OUT NATURAL RANGE 0   TO 1023;
+----			POS_Y			:	OUT NATURAL RANGE 0   TO 511;
+----			--VGA.
+----			RED			:	OUT STD_LOGIC_VECTOR	(2  DOWNTO 0);
+----			GRN			:	OUT STD_LOGIC_VECTOR	(2  DOWNTO 0);
+----			BLUE			:	OUT STD_LOGIC_VECTOR	(1  DOWNTO 0);
+----			HS				:	OUT STD_LOGIC;
+----			VS				:	OUT STD_LOGIC
+----         );
+----END VGADRVR;
+----
+----ARCHITECTURE BEHAVIORAL OF VGADRVR IS
+----CONSTANT	ZERO_COLOR	:	STD_LOGIC_VECTOR (7  DOWNTO 0):="00000000";
+----SIGNAL   CLK25M                : STD_LOGIC:='0';
+--------------------------------------------------------------------------------------------
+----SIGNAL	AREA_NEGRA				: BOOLEAN;
+------CONTADORES DE BARRIDOS HORIZONTAL Y VERTICAL.
+----SIGNAL	COUNTER_H		:	STD_LOGIC_VECTOR (9  DOWNTO 0):=(OTHERS=>'0');
+----SIGNAL	COUNTER_V		:	STD_LOGIC_VECTOR (9  DOWNTO 0):=(OTHERS=>'0');
+----
+----SIGNAL	COUNTER_H_CUR	:	STD_LOGIC_VECTOR (9  DOWNTO 0);
+----SIGNAL	COUNTER_V_CUR	:	STD_LOGIC_VECTOR (9  DOWNTO 0);
+----
+----SIGNAL	COLOR				:	STD_LOGIC_VECTOR (7  DOWNTO 0);
+------SIGNAL	COMPLETE				:	BOOLEAN:=FALSE;
+----
+----
+----SIGNAL	TOCOLORRED	:	STD_LOGIC_VECTOR (2  DOWNTO 0);
+----SIGNAL	TOCOLORGREEN:	STD_LOGIC_VECTOR (2  DOWNTO 0);
+----SIGNAL	TOCOLORBLUE	:	STD_LOGIC_VECTOR (1  DOWNTO 0);
+----
+----
+----SIGNAL	F_0_TO_7		:	STD_LOGIC;
+----SIGNAL	F_0_TO_7_STD:	STD_LOGIC_VECTOR (2  DOWNTO 0);
+----
+----SIGNAL	F_8_TO_9		:	STD_LOGIC;
+----SIGNAL	F_10			:	STD_LOGIC;
+----
+----
+----SIGNAL	F_8_TO_11	:	STD_LOGIC;
+----SIGNAL	F_12_TO_13	:	STD_LOGIC;
+----
+----
+----
+----SIGNAL	COUNTER_RAM			:	NATURAL RANGE      0   TO 327679 :=0;
+----
+----
+----
+----SIGNAL	BUFGCLK200M	:	STD_LOGIC;
+----
+----SIGNAL	CLK200M		:	STD_LOGIC;
+----SIGNAL	CLK100M		:	STD_LOGIC;
+----SIGNAL	CNT200M		:	STD_LOGIC_VECTOR (2  DOWNTO 0):="000";
+----
+----
+----SIGNAL	CLK_100_200M:	STD_LOGIC;
+----SIGNAL	CLK_100_200M_BUFG:	STD_LOGIC;
+----
+----SIGNAL	CLK200M_NEW	:	STD_LOGIC;
+----SIGNAL	CLK200M_NEW_BUFG	:	STD_LOGIC;
+----
+----SIGNAL	CLK400M	:	STD_LOGIC;
+----SIGNAL	CLK400M_BUFG	:	STD_LOGIC;
+----
+----
+----SIGNAL	CLK200M_END	:	STD_LOGIC;
+------SIGNAL	CLK200M_END_BUFG	:	STD_LOGIC;
+----
+----
+----SIGNAL	CNT400M		:	STD_LOGIC_VECTOR (3  DOWNTO 0);
+----
+----
+----
+----BEGIN
+----	CNT_RAM_POS	<=	COUNTER_RAM;
+----	
+----	
+----	DRIVERCLKDLL100:	clkDllCtrl PORT	MAP ( CLK50M , CLK100M  );
+----	DRIVERCLKDLL200:	clkDllCtrl PORT	MAP ( CLK100M , CLK200M );
+----	
+----   BUFG_INST1 : BUFG
+----   PORT MAP (
+----      O => BUFGCLK200M,   -- CLOCK BUFFER OUTPUT
+----      I => CLK200M -- CLOCK BUFFER INPUT
+----   );
+----	
+-----------------------------------------------------------------------------------------
+----	PROCESS (BUFGCLK200M)
+----	BEGIN
+----		IF (BUFGCLK200M'EVENT AND BUFGCLK200M='1') THEN
+----			CLK_100_200M	<=	NOT CLK_100_200M;
+----			CNT200M	<=	CNT200M+1;
+----		END IF;
+----	END PROCESS;
+-----------------------------------------------------------------------------------------
+----   BUFG_INST100_200 : BUFG
+----   PORT MAP (
+----      O => CLK_100_200M_BUFG,
+----      I => CLK_100_200M
+----   );
+----	DRIVERCLKDLL_100_200:	clkDllCtrl PORT MAP ( CLK_100_200M_BUFG , CLK200M_NEW );
+----	
+----	
+----   BUFG_INST200_NEW : BUFG
+----   PORT MAP (
+----      O => CLK200M_NEW_BUFG,
+----      I => CLK200M_NEW
+----   );
+----	DRIVERCLKDLL_200_NEW:	clkDllCtrl PORT MAP ( CLK200M_NEW_BUFG , CLK400M );
+----
+----	
+----	
+----	
+----   BUFG_INST400 : BUFG
+----   PORT MAP (
+----      O => CLK400M_BUFG,
+----      I => CLK400M
+----   );
+-----------------------------------------------------------------------------------------
+----	PROCESS (CLK400M_BUFG)
+----	BEGIN
+----		IF (CLK400M_BUFG'EVENT AND CLK400M_BUFG='1') THEN
+----			CLK200M_END	<=	NOT CLK200M_END;
+----		END IF;
+----	END PROCESS;
+-----------------------------------------------------------------------------------------
+----
+-----------------------------------------------------------------------------------------
+------   BUFG_INST200_END : BUFG
+------   PORT MAP (
+------      O => CLK200M_END_BUFG,
+------      I => CLK200M_END
+------   );
+------	PROCESS (CLK200M_END_BUFG)
+------	BEGIN
+------		IF (CLK200M_END_BUFG'EVENT AND CLK200M_END_BUFG='1') THEN
+------			--CNT200M	<=	CNT200M+1;			
+------		END IF;
+------	END PROCESS;
+----	
+------	PROCESS (CLK200M_END)
+------	BEGIN
+------		IF (CLK200M_END'EVENT AND CLK200M_END='1') THEN
+------			CNT200M	<=	CNT200M+1;			
+------		END IF;
+------	END PROCESS;
+----	
+----	
+----	CLK25M	<=	NOT CNT200M(2);
+----	
+----	CNT400M	<=	CNT200M&(NOT CLK200M_END);
+----	
+-----------------------------------------------------------------------------------------
+----	
+----	COLOR	<=	ZERO_COLOR											WHEN	AREA_NEGRA		ELSE
+----				(TOCOLORRED&TOCOLORGREEN&TOCOLORBLUE)		WHEN	VGA_8_16			ELSE
+----				(COLOR_RED(5 DOWNTO 3)&COLOR_GREEN(5 DOWNTO 3)&COLOR_BLUE(3 DOWNTO 2) );
+----	
+----	
+----	
+----	
+----	
+----	
+----	VS <= '0'	WHEN	(COUNTER_V<2)		ELSE '1';
+----	HS <= '0'	WHEN	(COUNTER_H<96)		ELSE '1';
+----
+----	AREA_NEGRA <= ( (COUNTER_H<144) OR (COUNTER_H>783) OR 
+----						 (COUNTER_V<31)  OR (COUNTER_V>510) );
+----	
+----
+----
+----	
+------	HS <= '0'	WHEN	( (COUNTER_H>655) AND (COUNTER_H<752) )		ELSE '1';
+------	VS <= '0'	WHEN	( (COUNTER_V>489) AND (COUNTER_V<492) )		ELSE '1';
+------	AREA_NEGRA <= ( (COUNTER_H>639) OR (COUNTER_V>479) );
+----	
+----	
+----
+----	
+----	
+----	F_0_TO_7		<=	NOT CNT400M(3);
+----	F_0_TO_7_STD<=	(OTHERS=>F_0_TO_7);
+----	
+----	F_8_TO_9		<=	CNT400M(3) AND (NOT CNT400M(2)) AND (NOT CNT400M(1));
+----	
+----	F_10		<=	CNT400M(3) AND (NOT CNT400M(2))	AND CNT400M(1) AND ( NOT CNT400M(0) );
+----	
+----	TOCOLORRED	<=	( COLOR_RED(5 DOWNTO 3) 	 AND F_0_TO_7_STD )				OR
+----						( '0'&COLOR_RED(2 DOWNTO 1) AND '0'&F_8_TO_9&F_8_TO_9 )	OR
+----						( '0'&'0'&COLOR_RED(0) 		 AND '0'&'0'&F_10 );
+----
+----	
+----	TOCOLORGREEN<=	( COLOR_GREEN(5 DOWNTO 3) 		AND F_0_TO_7_STD )			OR
+----						( '0'&COLOR_GREEN(2 DOWNTO 1) AND '0'&F_8_TO_9&F_8_TO_9 )OR
+----						( '0'&'0'&COLOR_GREEN(0) 		AND '0'&'0'&F_10 );
+----
+----	
+----	
+----	F_8_TO_11	<=	CNT400M(3) AND (NOT CNT400M(2));
+----	F_12_TO_13	<=	CNT400M(3) AND CNT400M(2) AND (NOT CNT400M(1));
+----	
+----	TOCOLORBLUE	<=	(COLOR_BLUE(3 DOWNTO 2) AND F_0_TO_7_STD(1 DOWNTO 0) )	OR 
+----						( '0'&COLOR_BLUE(1) AND F_8_TO_11&F_8_TO_11)	OR
+----						( '0'&COLOR_BLUE(0) AND F_12_TO_13&F_12_TO_13);
+----	
+----	
+----		
+------	TOCOLORRED	<=	COLOR_RED(5 DOWNTO 3)		WHEN	CNT200M<"110"	ELSE
+------						'0'&COLOR_RED(2 DOWNTO 1)	WHEN	CNT200M<"111"	ELSE
+------						'0'&'0'&COLOR_RED(0);
+------	TOCOLORGREEN<=	COLOR_GREEN(5 DOWNTO 3)		WHEN	CNT200M<"110"	ELSE
+------						'0'&COLOR_GREEN(2 DOWNTO 1)WHEN	CNT200M<"111"	ELSE
+------						'0'&'0'&COLOR_GREEN(0);
+------	TOCOLORBLUE	<=	COLOR_BLUE(3 DOWNTO 2)	WHEN	CNT200M<"101"		ELSE
+------						'0'&COLOR_BLUE(1)			WHEN	CNT200M<"111"	ELSE
+------						'0'&COLOR_BLUE(0);
+----
+----	
+------	TOCOLORRED	<=	COLOR_RED(5 DOWNTO 3)		WHEN	CNT200M<"110" OR (COLOR_RED="111111" AND COMPLETE )	ELSE
+------						'0'&COLOR_RED(2 DOWNTO 1)	WHEN	CNT200M<"111"							ELSE
+------						'0'&'0'&COLOR_RED(0);
+------	TOCOLORGREEN<=	COLOR_GREEN(5 DOWNTO 3)		WHEN	CNT200M<"110" OR (COLOR_GREEN="111111" AND COMPLETE )	ELSE
+------						'0'&COLOR_GREEN(2 DOWNTO 1)WHEN	CNT200M<"111"								ELSE
+------						'0'&'0'&COLOR_GREEN(0);
+------	TOCOLORBLUE	<=	COLOR_BLUE(3 DOWNTO 2)	WHEN	CNT200M<"101" OR (COLOR_BLUE="1111" AND COMPLETE )	ELSE
+------						'0'&COLOR_BLUE(1)			WHEN	CNT200M<"111"								ELSE
+------						'0'&COLOR_BLUE(0);
+----	
+----	RED <= COLOR(7 DOWNTO 5);
+----	GRN <= COLOR(4 DOWNTO 2);
+----	BLUE <=COLOR(1 DOWNTO 0);
+----	
+-----------------------------------------------------------------------------------------
+----	POS_X	<=	CONV_INTEGER( (COUNTER_H-144) );
+----	POS_Y	<=	CONV_INTEGER( (COUNTER_V-31) );
+-----------------------------------------------------------------------------------------
+----	PROCESS (CLK25M)																  --VGA
+----	BEGIN
+----		IF (CLK25M'EVENT AND CLK25M='1') THEN
+----			
+----			IF NOT AREA_NEGRA THEN
+----				COUNTER_RAM	<=	COUNTER_RAM+1;
+----			ELSIF COUNTER_H>790 AND COUNTER_V>518 THEN
+----				COUNTER_RAM	<=	0;
+----			END IF;
+----			
+----			
+----			COUNTER_H	<=	COUNTER_H_CUR;
+----			IF COUNTER_H_CUR="00"&x"00" THEN
+----				COUNTER_V	<=	COUNTER_V_CUR;
+----			END IF;
+----		END IF;
+----	END PROCESS;
+----	--
+----	PROCESS (COUNTER_H,COUNTER_V,COUNTER_H_CUR,COUNTER_V_CUR)
+----	BEGIN
+----		CASE	COUNTER_H	IS
+----			WHEN "11"&x"1F" =>
+----				COUNTER_H_CUR	<=	(OTHERS=>'0');
+----			WHEN OTHERS =>
+----				COUNTER_H_CUR	<=	COUNTER_H+1;
+----		END CASE;
+----		
+----		CASE	COUNTER_V	IS
+----			WHEN "10"&x"08" =>
+----				COUNTER_V_CUR	<=	(OTHERS=>'0');
+----			WHEN OTHERS =>
+----				COUNTER_V_CUR	<=	COUNTER_V+1;
+----		END CASE;
+----	END PROCESS;
+----END BEHAVIORAL;

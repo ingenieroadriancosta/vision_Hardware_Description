@@ -1,0 +1,19 @@
+#:C0     
+#Xilinx FPGA Editor Command Log File
+#Editor Version:
+#:V   NT M2.1 M.53d
+#Current Working Directory:
+#:D   E:\VHDL\PROGRAMAS\APRENDIZAJE\__MY__NEXIS2\VGA\VGA16BITS\VHDL
+#Date/Time:
+#:T   Fri Aug 05 04:44:08 2011
+#------------------------------
+	#Reading VGA16BITS_map.ncd...
+	#Loading device for application Rf_Device from file '3s1200e.nph' in environment C:\Xilinx\12.1\ISE_DS\ISE.
+	#   "VGA16BITS" is an NCD, version 3.2, device xc3s1200e, package fg320, speed -4
+	#Design creation date: 2011.08.05.09.16.06
+	#Building chip graphics...
+	#Loading speed info...
+	#1
+setattr main edit-mode no-logic-changes
+	#2
+unselect -all

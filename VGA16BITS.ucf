@@ -1,0 +1,123 @@
+NET "CLK50M"     LOC = B8  ;
+
+
+
+
+NET "BTN"      LOC = B18 ;
+##
+#
+#NET "SW"   LOC = G18 ;
+#NET "SW[0]"   LOC = G18 ;
+#NET "SW[1]"   LOC = H18 ;
+#NET "SW[2]"   LOC = K18 ;
+#NET "SW[3]"   LOC = K17 ;
+#NET "SW[4]"   LOC = L14 ;
+#NET "SW[5]"   LOC = L13 ;
+#NET "SW[6]"   LOC = N17 ;
+#NET "SW[7]"   LOC = R17 ;
+
+#NET "LEDS[0]"   LOC = J14 ;
+#NET "LEDS[1]"   LOC = J15 ;			#NET "BTN[0]"  LOC = B18 ;
+#NET "LEDS[2]"   LOC = K15 ;			#NET "BTN[1]"  LOC = D18 ;
+#NET "LEDS[3]"   LOC = K14 ;			#NET "BTN[2]"  LOC = E18 ;
+#NET "LEDS[4]"   LOC = E16 ;			#NET "BTN[3]"  LOC = H13 ;
+#NET "LEDS[5]"   LOC = P16 ;
+#NET "LEDS[6]"   LOC = E4  ;
+#NET "LEDS[7]"   LOC = P4  ;
+
+
+#SELECT
+#AN
+NET "DPL_ENABLE[3]" LOC = F15;#-AN3
+NET "DPL_ENABLE[2]" LOC = C18;#-AN2
+NET "DPL_ENABLE[1]" LOC = H17;#-AN1
+NET "DPL_ENABLE[0]" LOC = F17;#-AN0
+
+#OUT
+# P A B C D E F G
+# 7 6 5 4 3 2 1 0
+#NET "POINT_OUT" LOC = C17;#----P
+NET "DPL_SEG[6]" LOC = L18;#----A
+NET "DPL_SEG[5]" LOC = F18;#----B
+NET "DPL_SEG[4]" LOC = D17;#----C
+NET "DPL_SEG[3]" LOC = D16;#----D
+NET "DPL_SEG[2]" LOC = G14;#----E
+NET "DPL_SEG[1]" LOC = J17;#----F
+NET "DPL_SEG[0]" LOC = H14;#----G
+
+
+
+
+
+
+
+
+
+
+
+NET "HS"      LOC = T4  ;
+NET "VS"      LOC = U3  ;
+NET "RED[0]"  LOC = R9  ;			NET "GRN[0]"   LOC = N8  ;			NET "BLUE[0]"  LOC = U5  ;
+NET "RED[1]"  LOC = T8  ;			NET "GRN[1]"   LOC = P8  ;			NET "BLUE[1]"  LOC = U4  ;
+NET "RED[2]"  LOC = R8  ;			NET "GRN[2]"   LOC = P6  ;
+
+
+
+# ONBOARD USB CONTROLLER
+NET "ASTB"    LOC = "V14";
+NET "DSTB"    LOC = "U14";
+NET "PWRITE"  LOC = "V16";
+NET "PWAIT"   LOC = "N9";
+NET "PDB<0>"  LOC = "R14";
+NET "PDB<1>"  LOC = "R13";
+NET "PDB<2>"  LOC = "P13";
+NET "PDB<3>"  LOC = "T12";
+NET "PDB<4>"  LOC = "N11";
+NET "PDB<5>"  LOC = "R11";
+NET "PDB<6>"  LOC = "P10";
+NET "PDB<7>"  LOC = "R10";
+
+NET "ADDR[0]" LOC = J1  ;			NET "ADDR[6]"  LOC = H3  ;			NET "ADDR[12]" LOC = G4  ;
+NET "ADDR[1]" LOC = J2  ;			NET "ADDR[7]"  LOC = H6  ;			NET "ADDR[13]" LOC = F2  ;
+NET "ADDR[2]" LOC = H4  ;			NET "ADDR[8]"  LOC = F1  ;			NET "ADDR[14]" LOC = E1  ;
+NET "ADDR[3]" LOC = H1  ;			NET "ADDR[9]"  LOC = G3  ;			NET "ADDR[15]" LOC = M5  ;
+NET "ADDR[4]" LOC = H2  ;			NET "ADDR[10]" LOC = G6  ;			NET "ADDR[16]" LOC = E2  ;
+NET "ADDR[5]" LOC = J5  ;			NET "ADDR[11]" LOC = G5  ;			NET "ADDR[17]" LOC = C2  ;
+
+NET "ADDR[18]" LOC = C1 ;			NET "ADDR[20]" LOC = K3  ;			NET "ADDR[22]" LOC = K6  ;
+NET "ADDR[19]" LOC = D2 ;			NET "ADDR[21]" LOC = D1  ;
+
+NET "DATA[0]"  LOC = L1 ;			NET "DATA[4]"  LOC = N5 ;
+NET "DATA[1]"  LOC = L4 ;			NET "DATA[5]"  LOC = P1 ;
+NET "DATA[2]"  LOC = L6 ;			NET "DATA[6]"  LOC = P2 ;
+NET "DATA[3]"  LOC = M4 ;			NET "DATA[7]"  LOC = R2 ;
+
+NET "DATA[8]"  LOC = L3 ;			NET "DATA[12]"  LOC = L2 ;
+NET "DATA[9]"  LOC = L5;			NET "DATA[13]"  LOC = N4 ;
+NET "DATA[10]" LOC = M3 ;			NET "DATA[14]"  LOC = R3 ;
+NET "DATA[11]" LOC = M6 ;			NET "DATA[15]"  LOC = T1 ;
+
+
+
+
+
+
+
+#DEVICE.
+NET "OE"      LOC = T2  ;
+NET "WE"      LOC = N7  ;
+#RAM.
+NET "MT_CE"   LOC = R6  ;
+NET "MT_UB"   LOC = K4  ;
+NET "MT_LB"   LOC = K5  ;
+NET "MT_CLK" LOC = H5  ;
+#FLASH.
+NET "ST_CE"   LOC = R5  ;
+#NET "ST_STS"  LOC = D3  ;
+NET "ST_RP"   LOC = T5  ;
+
+
+
+
+NET "KBRD_CLK_PIN" LOC = R12 | PULLUP;
+NET "KBRD_DATA_PIN" LOC = P11 | PULLUP;
